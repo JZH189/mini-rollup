@@ -1,0 +1,16 @@
+{
+  "name": "mini-rollup",
+  "version": "1.0.0",
+  "description": "",
+  "main": "rollup.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "victor",
+  "license": "ISC",
+  "dependencies": {
+    "acorn": "^8.7.1",
+    "magic-string": "^0.26.2"
+  }
+}
