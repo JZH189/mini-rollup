@@ -18,7 +18,6 @@ export default class Bundle {
       this.statements = entryModule.expandAllStatements();
       // 3. 生成最终代码
       const codeStr = this.generate();
-      console.log(codeStr);
       // 4. 写入目标文件
       writeFileSync(options.outputFile, codeStr);
     } catch (error) {

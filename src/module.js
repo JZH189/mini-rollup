@@ -1,6 +1,7 @@
 import MagicString from "magic-string";
 import { parse } from "acorn";
 import analyse from "./ast/analyse.js";
+import walk from "./ast/walk.js";
 import { hasOwn } from "./utils/index.js";
 
 const SYSTEM_VARIABLE = ["console", "log"];
@@ -22,7 +23,66 @@ export default class Module {
     this.analyse(); //分析ast
   }
   analyse() {
-    // 1、收集模块的导入和导出
+    let magicString = this.code;
+    // 1、删除冗余逻辑
+    this.ast.body.forEach((statement) => {
+      function generateBodystr(bodyList) {
+        let result = "";
+        bodyList.forEach((body) => {
+          result += magicString.snip(body.start, body.end).trim();
+        });
+        return result;
+      }
+      function operateAst(node) {
+        switch (node.type) {
+          case "IfStatement":
+            if (node.test.type === "Literal") {
+              const value = node.test.value;
+              if (value === false || value === 0) {
+                //if语句执行结果为 false
+                if (node.alternate === null) {
+                  //不存在else语句删除整个节点
+                  magicString.remove(node.start, node.end);
+                } else {
+                  const source = generateBodystr(node.alternate.body);
+                  magicString.overwrite(node.start, node.end, source);
+                }
+              } else {
+                //if语句执行结果为 true
+                const source = generateBodystr(node.consequent.body);
+                magicString.overwrite(node.start, node.end, source);
+              }
+            }
+            break;
+          case "FunctionDeclaration":
+            const functionBodyStatement = node.body.body
+            // 遍历body节点删除冗余逻辑
+            functionBodyStatement.forEach((ast, index) => {
+              if(ast.type === "ReturnStatement") {
+                if(ast.argument) {
+                    if(ast.argument.type === "Literal") {
+                      if(ast.argument.value === false) {
+                        magicString.overwrite(ast.argument.end, node.end, "\n}");
+                      }
+                    }
+                }
+              } else if(ast.type === "IfStatement") {
+                if(ast.test) {
+                  if(ast.test.type === "Literal") {
+                    if(ast.test.value === false) {
+                      magicString.remove(ast.start, ast.end);
+                    }
+                  }
+                }
+              }
+            })
+            break;
+        }
+      }
+      walk(statement, operateAst(statement));
+    });
+
+    // 2、收集模块的导入和导出
     this.ast.body.forEach((node) => {
       let source;
       // 收集 imports
@@ -93,15 +153,14 @@ export default class Module {
         }
       }
     });
-    // 2、深度优先遍历ast并且记录所有语句的_dependsOn、_defines、_modifies等等
+    // 3、深度优先遍历ast并且记录所有语句的_dependsOn、_defines 等等
     analyse(this.ast, this.code, this);
-    // 3、记录 statement 中 definitions 以及 modifications
+    // 4、记录 statement 中 definitions 
     this.ast.body.forEach((statement) => {
       Object.keys(statement._defines).forEach((name) => {
         this.definitions[name] = statement;
       });
     });
-    // ast._scope = scope;
   }
   expandAllStatements() {
     const allStatements = [];

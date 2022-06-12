@@ -3,6 +3,7 @@ import walk from "./walk.js";
 
 export default function analyse(ast, magicString, module) {
   let scope = new Scope(); //创建一个顶层作用域
+
   ast.body.forEach((statement) => {
     function addToScope(declarator, isBlockDeclaration = false) {
       const { name } = declarator.id;
@@ -88,7 +89,6 @@ export default function analyse(ast, magicString, module) {
     function checkForWrites(node) {
       function addNode(node) {
         while (node.type === "MemberExpression") {
-          // var a = 1; var obj = { c: 3 }; a += obj.c;
           node = node.object;
         }
         if (node.type !== "Identifier") {
